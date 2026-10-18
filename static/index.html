@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Traffic Signal Control System (STCS) · Soft Computing Cockpit</title>
+  <meta name="description" content="Intelligent Transportation System powered by Fuzzy Logic, Genetic Algorithms, ANFIS and Neural Networks.">
+  
+  <!-- Modern Typography: Outfit & Inter Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Chart.js for High-Performance Telemetry -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- ==============================================================================
+       HEADER SECTION
+       ============================================================================== -->
+  <header>
+    <div class="brand-wrapper">
+      <div class="brand-icon">
+        <i data-lucide="traffic-cone"></i>
+      </div>
+      <div class="brand-title">
+        <h1>STCS · Soft Computing AI Cockpit</h1>
+        <p>Mamdani FLC · 5-Layer ANFIS · Backprop MLP · Genetic Algorithm</p>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <div id="wsStatusPill" class="status-pill">
+        <span class="status-dot"></span>
+        <span id="wsStatusText">CONNECTING...</span>
+      </div>
+
+      <div class="clock-badge" id="simClockBadge">
+        SIM TIME: <span id="simTimeDisplay">00:00.0</span>
+      </div>
+
+      <button id="btnToggleMode" class="control-btn primary" title="Cycle Mode: Adaptive (FLC) / Static (30s) / Manual">
+        <i data-lucide="cpu"></i>
+        <span id="lblControlMode">MODE: ADAPTIVE (FLC + ANN)</span>
+      </button>
+
+      <div class="speed-btn-group" title="Simulation Speed Multiplier">
+        <button id="btnSpeed1x" class="speed-btn active" data-speed="1.0">1x</button>
+        <button id="btnSpeed2x" class="speed-btn" data-speed="2.0">2x</button>
+        <button id="btnSpeed5x" class="speed-btn" data-speed="5.0">5x</button>
+      </div>
+
+      <button id="btnPauseResume" class="control-btn" title="Pause or Resume Simulation Clock">
+        <span id="iconPauseResumeWrapper"><i data-lucide="pause"></i></span>
+        <span id="lblPauseResume">PAUSE</span>
+      </button>
+
+      <button id="btnRunBenchmark" class="control-btn primary" title="Execute Comparative 150s Surge Benchmark">
+        <i data-lucide="bar-chart-3"></i>
+        <span>RUN BENCHMARK</span>
+      </button>
+
+      <button id="btnInspectModels" class="control-btn" title="Inspect Soft Computing Architecture & Trained Weights">
+        <i data-lucide="brain-circuit"></i>
+        <span>AI ARCHITECTURE</span>
+      </button>
+
+      <button id="btnResetSim" class="control-btn" title="Reset Simulation State">
+        <i data-lucide="rotate-ccw"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==============================================================================
+       MAIN APPLICATION CONTAINER
+       ============================================================================== -->
+  <main class="app-container">
+
+    <!-- KPI Metric Cards Bar -->
+    <section class="kpi-row">
+      <!-- KPI 1: Active Signal Phase -->
+      <div class="glass-panel kpi-card" style="--kpi-accent: var(--color-green);">
+        <div class="kpi-header">
+          <span>ACTIVE SIGNAL PHASE</span>
+          <i data-lucide="radio" style="color: var(--color-green); width: 16px;"></i>
+        </div>
+        <div class="kpi-value" id="kpiActivePhase">North-South</div>
+        <div class="kpi-subtext">
+          <span id="kpiSignalBadge" class="kpi-badge positive">GREEN LIGHT</span>
+          <span>Hold: <strong id="kpiPhaseCountdown">0.0s / 30.0s</strong></span>
+        </div>
+      </div>
+
+      <!-- KPI 2: Average Vehicle Delay -->
+      <div class="glass-panel kpi-card" style="--kpi-accent: var(--color-cyan);">
+        <div class="kpi-header">
+          <span>AVERAGE VEHICLE DELAY</span>
+          <i data-lucide="clock" style="color: var(--color-cyan); width: 16px;"></i>
+        </div>
+        <div class="kpi-value"><span id="kpiAvgDelay">0.0</span> <small style="font-size: 1rem; color: var(--text-muted);">sec</small></div>
+        <div class="kpi-subtext">
+          <span class="kpi-badge positive" id="kpiDelayReductionBadge">-29.6% vs Static</span>
+          <span>Target: &ge; 25%</span>
+        </div>
+      </div>
+
+      <!-- KPI 3: Queued Vehicles -->
+      <div class="glass-panel kpi-card" style="--kpi-accent: var(--color-yellow);">
+        <div class="kpi-header">
+          <span>QUEUED VEHICLES</span>
+          <i data-lucide="car" style="color: var(--color-yellow); width: 16px;"></i>
+        </div>
+        <div class="kpi-value"><span id="kpiTotalQueued">0</span> <small style="font-size: 1rem; color: var(--text-muted);">cars</small></div>
+        <div class="kpi-subtext">
+          <span class="kpi-badge warning" id="kpiActiveVehBadge">0 active vehicles</span>
+        </div>
+      </div>
+
+      <!-- KPI 4: Total Completed Throughput -->
+      <div class="glass-panel kpi-card" style="--kpi-accent: var(--color-purple);">
+        <div class="kpi-header">
+          <span>COMPLETED THROUGHPUT</span>
+          <i data-lucide="check-circle-2" style="color: var(--color-purple); width: 16px;"></i>
+        </div>
+        <div class="kpi-value"><span id="kpiThroughput">0</span> <small style="font-size: 1rem; color: var(--text-muted);">veh</small></div>
+        <div class="kpi-subtext">
+          <span class="kpi-badge positive">+75% Flow Rate</span>
+        </div>
+      </div>
+
+      <!-- KPI 5: ANN 10m Surge Forecast -->
+      <div class="glass-panel kpi-card" style="--kpi-accent: var(--color-red);">
+        <div class="kpi-header">
+          <span>ANN SURGE FORECAST</span>
+          <i data-lucide="zap" style="color: var(--color-red); width: 16px;"></i>
+        </div>
+        <div class="kpi-value"><span id="kpiSurgeFactor">0.0</span><small style="font-size: 1rem; color: var(--text-muted);">%</small></div>
+        <div class="kpi-subtext">
+          <span class="kpi-badge positive" id="kpiSurgeAlertBadge">NORMAL DEMAND</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Grid: 2D Canvas Visualizer (Left) vs Soft Computing Cockpit (Right) -->
+    <div class="main-grid">
+
+      <!-- LEFT COLUMN: 2D INTERSECTION SIMULATION -->
+      <div class="glass-panel canvas-card">
+        <div class="card-title-bar">
+          <h2><i data-lucide="map-pin" style="color: var(--color-cyan); width: 18px;"></i> 4-Way Crossroad Simulation Environment</h2>
+          <div class="intersection-action-buttons">
+            <button id="btnForceSwitch" class="control-btn" style="padding: 4px 10px; font-size: 0.74rem;" title="Force immediate signal change">
+              <i data-lucide="arrow-right-left" style="width: 14px;"></i> Force Switch
+            </button>
+            <button id="btnEmergNorth" class="control-btn danger" style="padding: 4px 9px; font-size: 0.74rem;" title="Priority Ambulance on North">
+              <i data-lucide="siren" style="width: 14px;"></i> Amb N
+            </button>
+            <button id="btnEmergWest" class="control-btn danger" style="padding: 4px 9px; font-size: 0.74rem;" title="Priority Ambulance on West">
+              <i data-lucide="siren" style="width: 14px;"></i> Amb W
+            </button>
+            <button id="btnEmergSouth" class="control-btn danger" style="padding: 4px 9px; font-size: 0.74rem;" title="Priority Police on South">
+              <i data-lucide="shield-alert" style="width: 14px;"></i> Pol S
+            </button>
+            <button id="btnEmergEast" class="control-btn danger" style="padding: 4px 9px; font-size: 0.74rem;" title="Priority Fire Engine on East">
+              <i data-lucide="flame" style="width: 14px;"></i> Fire E
+            </button>
+            <button id="btnClearEmerg" class="control-btn warning" style="padding: 4px 9px; font-size: 0.74rem; display: none;" title="Cancel Emergency Priority">
+              <i data-lucide="x-circle" style="width: 14px;"></i> Clear
+            </button>
+          </div>
+        </div>
+
+        <!-- Emergency Active Alert Banner -->
+        <div id="emergencyBanner" class="emergency-alert-banner" style="display: none;">
+          <div class="alert-content">
+            <i data-lucide="siren" class="spin"></i>
+            <span><strong>EMERGENCY PREEMPTION ACTIVE:</strong> Priority Green for <strong id="emergCorridorName">North</strong> corridor (<span id="emergTimeLeft">20.0s</span> remaining)</span>
+          </div>
+          <button id="btnCancelEmergBanner" class="control-btn warning" style="padding: 3px 8px; font-size: 0.72rem;">RESTORE NORMAL</button>
+        </div>
+
+        <!-- HTML5 Canvas Visualizer -->
+        <div class="canvas-viewport">
+          <canvas id="trafficCanvas" width="600" height="600"></canvas>
+        </div>
+
+        <!-- Interactive Inflow Sliders -->
+        <div class="demand-panel">
+          <div class="demand-header">
+            <span>LIVE VEHICLE ARRIVAL DEMAND ADJUSTMENT (VEHICLES / MIN)</span>
+            <span style="font-family: var(--font-mono); color: var(--color-cyan);">Module 1 & 2 Sensor Feeds</span>
+          </div>
+          <div class="sliders-grid">
+            <div class="slider-group">
+              <div class="slider-label"><span>North Corridor</span><strong id="lblDemandN">4.5</strong></div>
+              <input type="range" id="sliderNorth" min="0" max="15" step="0.5" value="4.5">
+            </div>
+            <div class="slider-group">
+              <div class="slider-label"><span>South Corridor</span><strong id="lblDemandS">4.5</strong></div>
+              <input type="range" id="sliderSouth" min="0" max="15" step="0.5" value="4.5">
+            </div>
+            <div class="slider-group">
+              <div class="slider-label"><span>East Corridor</span><strong id="lblDemandE">5.0</strong></div>
+              <input type="range" id="sliderEast" min="0" max="15" step="0.5" value="5.0">
+            </div>
+            <div class="slider-group">
+              <div class="slider-label"><span>West Corridor</span><strong id="lblDemandW">5.0</strong></div>
+              <input type="range" id="sliderWest" min="0" max="15" step="0.5" value="5.0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT COLUMN: SOFT COMPUTING COCKPIT -->
+      <div class="cockpit-column">
+
+        <!-- 1. Mamdani Fuzzy Inference Engine Panel -->
+        <div class="glass-panel fuzzy-card">
+          <div class="card-title-bar">
+            <h2><i data-lucide="git-merge" style="color: var(--color-yellow); width: 18px;"></i> Mamdani Fuzzy Logic Controller (FLC)</h2>
+            <span class="kpi-badge positive">36 IF-THEN Rules</span>
+          </div>
+
+          <!-- Fuzzification Membership Degrees -->
+          <div class="fuzzification-gauges">
+            <!-- Queue Length -->
+            <div class="gauge-box">
+              <div class="gauge-title">Queue Length (Q)</div>
+              <div class="degree-item"><span>Short</span><div class="degree-bar-bg"><div class="degree-bar-fill" id="mf_q_short" style="width: 0%;"></div></div></div>
+              <div class="degree-item"><span>Medium</span><div class="degree-bar-bg"><div class="degree-bar-fill" id="mf_q_medium" style="width: 0%;"></div></div></div>
+              <div class="degree-item"><span>Long</span><div class="degree-bar-bg"><div class="degree-bar-fill" id="mf_q_long" style="width: 0%;"></div></div></div>
+              <div class="degree-item"><span>VeryLong</span><div class="degree-bar-bg"><div class="degree-bar-fill" id="mf_q_verylong" style="width: 0%;"></div></div></div>
+            </div>
+
+            <!-- Wait Time -->
+            <div class="gauge-box">
+              <div class="gauge-title">Waiting Time (W)</div>
+              <div class="degree-item"><span>Low</span><div class="degree-bar-bg"><div class="degree-bar-fill" id="mf_w_low" style="width: 0%;"></div></div></div>
+              <div class="degree-item"><span>Normal</span><div class="degree-bar-bg"><div class="degree-bar-fill" id="mf_w_normal" style="width: 0%;"></div></div></div>
+              <div class="degree-item"><span>Critical</span><div class="degree-bar-bg"><div class="degree-bar-fill" id="mf_w_critical" style="width: 0%;"></div></div></div>
+            </div>
+
+            <!-- Arrival Rate -->
+            <div class="gauge-box">
+              <div class="gauge-title">Arrival Rate (V)</div>
+              <div class="degree-item"><span>Low</span><div class="degree-bar-bg"><div class="degree-bar-fill" id="mf_v_low" style="width: 0%;"></div></div></div>
+              <div class="degree-item"><span>Medium</span><div class="degree-bar-bg"><div class="degree-bar-fill" id="mf_v_medium" style="width: 0%;"></div></div></div>
+              <div class="degree-item"><span>High</span><div class="degree-bar-bg"><div class="degree-bar-fill" id="mf_v_high" style="width: 0%;"></div></div></div>
+            </div>
+          </div>
+
+          <!-- Centroid Defuzzification Meter -->
+          <div class="defuzz-meter-box">
+            <div class="defuzz-header">
+              <span style="font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase;">
+                Centroid Defuzzification Output (&Delta;T Green Extension)
+              </span>
+              <span class="defuzz-val" id="lblDefuzzGreen">30.0s</span>
+            </div>
+            <div class="defuzz-track">
+              <div class="defuzz-fill" id="defuzzProgressBar" style="width: 50%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted); font-family: var(--font-mono);">
+              <span>Min: 10.0s</span>
+              <span>Universe: [10s, 60s]</span>
+              <span>Max: 60.0s</span>
+            </div>
+          </div>
+
+          <!-- Active Rules Live Feed -->
+          <div>
+            <div style="font-size: 0.78rem; color: var(--text-secondary); font-weight: 600; margin-bottom: 8px; text-transform: uppercase;">
+              Active Firing Rules (Min T-Norm Aggregation)
+            </div>
+            <div class="rules-container" id="activeRulesContainer">
+              <div class="rule-pill">
+                <div class="rule-header"><span class="rule-id">Rule #11</span><span class="firing-badge">&alpha; = 0.85</span></div>
+                <div class="rule-desc">IF Queue is Medium AND Wait is Normal THEN Extension is Medium</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Backprop ANN Flow Predictor Panel -->
+        <div class="glass-panel ann-card">
+          <div class="card-title-bar">
+            <h2><i data-lucide="network" style="color: var(--color-purple); width: 18px;"></i> ANN Flow Predictor & ANFIS Tuner</h2>
+            <span class="kpi-badge positive">R^2 = 0.9940</span>
+          </div>
+
+          <div class="ann-grid">
+            <div class="ann-stat">
+              <span>Phase 0 (NS) 10m Forecast</span>
+              <strong id="lblAnnForecastNS">0.0 veh</strong>
+            </div>
+            <div class="ann-stat">
+              <span>Phase 1 (EW) 10m Forecast</span>
+              <strong id="lblAnnForecastEW">0.0 veh</strong>
+            </div>
+            <div class="ann-stat">
+              <span>NS Surge Pressure</span>
+              <strong id="lblAnnSurgeNS">0.0%</strong>
+            </div>
+            <div class="ann-stat">
+              <span>EW Surge Pressure</span>
+              <strong id="lblAnnSurgeEW">0.0%</strong>
+            </div>
+          </div>
+
+          <div style="background: rgba(15, 23, 42, 0.6); padding: 10px; border-radius: 8px; font-size: 0.74rem; color: var(--text-secondary); display: flex; justify-content: space-between;">
+            <span>GA Boundary Optimizer: <strong style="color: var(--color-green);">31.03% delay drop</strong></span>
+            <span>ANFIS Sugeno Rules: <strong style="color: var(--color-cyan);">27 tuned rules</strong></span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Bottom Row: Real-time Telemetry Charts & Signal Change Audit Trail -->
+    <div class="analytics-grid">
+      <!-- Real-Time Delay Chart -->
+      <div class="glass-panel chart-card">
+        <div class="card-title-bar">
+          <h2><i data-lucide="trending-up" style="color: var(--color-cyan); width: 18px;"></i> Average Delay: Adaptive vs. Static Baseline</h2>
+          <span style="font-size: 0.74rem; color: var(--text-muted); font-family: var(--font-mono);">Seconds</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="delayChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Real-Time Queue Lengths Chart -->
+      <div class="glass-panel chart-card">
+        <div class="card-title-bar">
+          <h2><i data-lucide="layers" style="color: var(--color-yellow); width: 18px;"></i> Live Approach Queue Lengths</h2>
+          <span style="font-size: 0.74rem; color: var(--text-muted); font-family: var(--font-mono);">Vehicles</span>
+        </div>
+        <div class="chart-container">
+          <canvas id="queueChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Signal Change Audit Trail Log -->
+    <div class="glass-panel audit-card">
+      <div class="card-title-bar">
+        <h2><i data-lucide="clipboard-list" style="color: var(--color-purple); width: 18px;"></i> Signal Switching Audit Trail (SQLite Log)</h2>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button id="btnExportLogs" class="control-btn" style="padding: 4px 10px; font-size: 0.74rem;" title="Download switching logs as JSON">
+            <i data-lucide="download" style="width: 14px;"></i> Export JSON
+          </button>
+          <span style="font-size: 0.74rem; color: var(--text-muted);">Module 5 Decision History</span>
+        </div>
+      </div>
+      <div class="table-wrapper">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Sim Time</th>
+              <th>Transition</th>
+              <th>Allocated Green</th>
+              <th>Trigger Reason</th>
+              <th>Soft Computing Decision Rationale</th>
+            </tr>
+          </thead>
+          <tbody id="switchAuditTableBody">
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                Awaiting first signal switching event...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ==============================================================================
+       COMPARATIVE BENCHMARK REPORT MODAL
+       ============================================================================== -->
+  <div id="benchmarkModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="award" style="color: var(--color-green);"></i> Comparative Benchmark Report
+        </h3>
+        <button id="btnCloseBenchmarkModal" class="modal-close">&times;</button>
+      </div>
+
+      <div style="font-size: 0.82rem; color: var(--text-secondary);">
+        Head-to-head 150-second surge experiment evaluating Standard Static Fixed-Time control vs. STCS Adaptive Soft Computing control.
+      </div>
+
+      <div class="benchmark-scorecard">
+        <div class="scorecard-item">
+          <label>Delay Reduction</label>
+          <div class="score-val" id="bmDelayReduction">+29.6%</div>
+          <span style="font-size: 0.7rem; color: var(--color-green);">Target &ge; 25% Met</span>
+        </div>
+        <div class="scorecard-item">
+          <label>Throughput Gain</label>
+          <div class="score-val" id="bmThroughputGain">+75.0%</div>
+          <span style="font-size: 0.7rem; color: var(--color-cyan);">Flow Accelerated</span>
+        </div>
+        <div class="scorecard-item">
+          <label>Queue Reduction</label>
+          <div class="score-val" id="bmQueueReduction">-62.5%</div>
+          <span style="font-size: 0.7rem; color: var(--color-purple);">Spillback Averted</span>
+        </div>
+      </div>
+
+      <div style="background: rgba(15, 23, 42, 0.7); padding: 14px; border-radius: 10px; font-size: 0.78rem; display: flex; flex-direction: column; gap: 8px;">
+        <div style="display: flex; justify-content: space-between;">
+          <span>Static Fixed-Time Avg Delay:</span>
+          <strong id="bmStaticDelay">7.1s</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>Adaptive Soft Computing Avg Delay:</span>
+          <strong id="bmAdaptiveDelay" style="color: var(--color-green);">5.0s</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between;">
+          <span>Completed Vehicles:</span>
+          <span id="bmThroughputCompare">4 static vs. 7 adaptive</span>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end;">
+        <button id="btnDismissBenchmarkModal" class="control-btn primary">CLOSE REPORT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==============================================================================
+       AI ARCHITECTURE INSPECTOR MODAL
+       ============================================================================== -->
+  <div id="modelsModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 820px;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+          <i data-lucide="brain-circuit" style="color: var(--color-cyan);"></i> Soft Computing AI Architecture Inspector
+        </h3>
+        <button id="btnCloseModelsModal" class="modal-close">&times;</button>
+      </div>
+
+      <div class="models-grid" id="modelsGridContainer">
+        <div class="model-box">
+          <h4><i data-lucide="git-merge" style="color: var(--color-yellow);"></i> Mamdani Fuzzy Inference Engine</h4>
+          <p>Evaluates Queue Length (4 MFs), Waiting Time (3 MFs), and Arrival Rates (3 MFs). Features Ruspini partition completeness (&sum; &mu; = 1.0) and Centroid (COG) defuzzification.</p>
+          <div><span class="model-metrics-tag">36 Rules &middot; COG Defuzzifier &middot; Ruspini Compliant</span></div>
+        </div>
+
+        <div class="model-box">
+          <h4><i data-lucide="dna" style="color: var(--color-green);"></i> Genetic Algorithm MF Optimizer</h4>
+          <p>Real-coded Genetic Algorithm that fine-tunes membership function parameters and boundaries. Evaluated across 50 generations with SBX crossover and polynomial mutation.</p>
+          <div><span class="model-metrics-tag">31.03% Delay Drop &middot; 50 Gens &middot; Pop 20</span></div>
+        </div>
+
+        <div class="model-box">
+          <h4><i data-lucide="layers" style="color: var(--color-purple);"></i> 5-Layer TS-Kang ANFIS Engine</h4>
+          <p>Takagi-Sugeno ANFIS model with Gaussian membership antecedents and first-order linear consequents trained via Jang's hybrid learning (LSE forward + Backprop backward).</p>
+          <div><span class="model-metrics-tag">27 Tuned Rules &middot; R&sup2; = 0.9938</span></div>
+        </div>
+
+        <div class="model-box">
+          <h4><i data-lucide="network" style="color: var(--color-red);"></i> Backpropagation MLP Predictor</h4>
+          <p>PyTorch 6-feature neural network predicting traffic volume 10 minutes ahead and classifying imminent surge pressure to prevent intersection gridlock.</p>
+          <div><span class="model-metrics-tag">6-64-32-2 Architecture &middot; R&sup2; = 0.9940</span></div>
+        </div>
+
+        <div class="model-box">
+          <h4><i data-lucide="camera" style="color: var(--color-cyan);"></i> OpenCV MOG2 Vision Detector</h4>
+          <p>Background subtraction pipeline with morphological opening/closing, bounding box tracking, and stationary vehicle queue retention.</p>
+          <div><span class="model-metrics-tag">46 FPS &middot; Multi-Lane Tracking</span></div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end;">
+        <button id="btnDismissModelsModal" class="control-btn primary">CLOSE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Controller Script -->
+  <script src="/static/dashboard.js"></script>
+
+</body>
+</html>
